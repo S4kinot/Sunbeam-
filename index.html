@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Moodboard Studio</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
@@ -18,7 +19,6 @@
       color: #18181b;
       overflow: hidden;
     }
-    /* Toolbar Sidebar */
     #sidebar {
       width: 280px;
       background-color: #ffffff;
@@ -26,18 +26,17 @@
       padding: 24px 16px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 18px;
       z-index: 10;
     }
     h1 {
       font-size: 1.25rem;
       font-weight: 700;
-      margin-bottom: 8px;
     }
     .control-group {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
     }
     label {
       font-size: 0.85rem;
@@ -69,26 +68,38 @@
     button:hover {
       background-color: #3f3f46;
     }
+    button.action-btn {
+      background-color: #2563eb;
+    }
+    button.action-btn:hover {
+      background-color: #1d4ed8;
+    }
+    button.clear-btn {
+      background-color: #ef4444;
+    }
+    button.clear-btn:hover {
+      background-color: #dc2626;
+    }
     .instructions {
       font-size: 0.8rem;
       color: #71717a;
       line-height: 1.4;
       margin-top: auto;
       border-top: 1px solid #e4e4e7;
-      padding-top: 16px;
+      padding-top: 12px;
     }
 
-    /* Canvas Area */
+  
     #canvas {
       flex: 1;
       position: relative;
-      background-color: #fafafa;
+      background-color: #ffffff;
       background-image: radial-gradient(#e4e4e7 1px, transparent 1px);
       background-size: 20px 20px;
       overflow: hidden;
     }
 
-    /* Movable Board Cards */
+
     .board-item {
       position: absolute;
       cursor: move;
@@ -96,7 +107,6 @@
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       border: 2px solid transparent;
-      transition: border-color 0.2s;
     }
     .board-item.selected {
       border-color: #2563eb;
@@ -107,6 +117,7 @@
       object-fit: cover;
       border-radius: 6px;
       pointer-events: none;
+      display: block;
     }
     .board-item.text-item {
       background: #ffffff;
@@ -115,6 +126,7 @@
       font-size: 1.1rem;
       font-weight: 500;
       word-wrap: break-word;
+      border: 1px solid #e4e4e7;
     }
     .board-item.color-item {
       width: 100px;
@@ -163,10 +175,16 @@
       <button id="addColorBtn">Add Color</button>
     </div>
 
+    <hr style="border: 0; border-top: 1px solid #e4e4e7;" />
+
+    <button id="downloadBtn" class="action-btn">Download Image 📸</button>
+    <button id="clearBtn" class="clear-btn">Clear Canvas 🗑️</button>
+
     <div class="instructions">
       <p><strong>Controls:</strong></p>
-      <p>• Drag items to position them.</p>
-      <p>• Hover over an item and click 'X' to remove it.</p>
+      <p>• Drag items to arrange.</p>
+      <p>• Hover & click '✕' to remove.</p>
+      <p>• Layout saves automatically.</p>
     </div>
   </aside>
 
@@ -178,12 +196,41 @@
     let offsetX = 0;
     let offsetY = 0;
 
-    // Helper to generate board item container
-    function createBoardItem(x = 50, y = 50) {
+    function saveLayout() {
+      const items = [];
+      document.querySelectorAll('.board-item').forEach(item => {
+        const type = item.dataset.type;
+        const left = item.style.left;
+        const top = item.style.top;
+        
+        let content = '';
+        if (type === 'image') content = item.querySelector('img').src;
+        if (type === 'text') content = item.childNodes[0].textContent;
+        if (type === 'color') content = item.style.backgroundColor;
+
+        items.push({ type, left, top, content });
+      });
+      localStorage.setItem('moodboard_data', JSON.stringify(items));
+    }
+
+    
+    function loadLayout() {
+      const saved = localStorage.getItem('moodboard_data');
+      if (!saved) return;
+      const items = JSON.parse(saved);
+      items.forEach(data => {
+        if (data.type === 'image') addImageItem(data.content, data.left, data.top);
+        if (data.type === 'text') addTextItem(data.content, data.left, data.top);
+        if (data.type === 'color') addColorItem(data.content, data.left, data.top);
+      });
+    }
+
+    function createBoardItem(x = '50px', y = '50px', type) {
       const item = document.createElement('div');
       item.className = 'board-item';
-      item.style.left = `${x}px`;
-      item.style.top = `${y}px`;
+      item.dataset.type = type;
+      item.style.left = x;
+      item.style.top = y;
 
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'delete-btn';
@@ -191,6 +238,7 @@
       deleteBtn.onclick = (e) => {
         e.stopPropagation();
         item.remove();
+        saveLayout();
       };
       item.appendChild(deleteBtn);
 
@@ -199,52 +247,81 @@
       return item;
     }
 
-    // Add Image
+    function addImageItem(src, x = '100px', y = '100px') {
+      const item = createBoardItem(x, y, 'image');
+      const img = document.createElement('img');
+      img.src = src;
+      img.style.width = '200px';
+      item.appendChild(img);
+      saveLayout();
+    }
+
+    function addTextItem(text, x = '150px', y = '150px') {
+      const item = createBoardItem(x, y, 'text');
+      item.classList.add('text-item');
+      item.insertBefore(document.createTextNode(text), item.firstChild);
+      saveLayout();
+    }
+
+    function addColorItem(color, x = '200px', y = '200px') {
+      const item = createBoardItem(x, y, 'color');
+      item.classList.add('color-item');
+      item.style.backgroundColor = color;
+      saveLayout();
+    }
+    
     document.getElementById('imageLoader').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
-
       const reader = new FileReader();
-      reader.onload = (event) => {
-        const item = createBoardItem(100, 100);
-        const img = document.createElement('img');
-        img.src = event.target.result;
-        img.style.width = '200px';
-        item.appendChild(img);
-      };
+      reader.onload = (event) => addImageItem(event.target.result);
       reader.readAsDataURL(file);
       e.target.value = '';
     });
 
-    // Add Text
     document.getElementById('addTextBtn').addEventListener('click', () => {
       const input = document.getElementById('textInput');
       if (!input.value.trim()) return;
-
-      const item = createBoardItem(150, 150);
-      item.classList.add('text-item');
-      item.appendChild(document.createTextNode(input.value));
+      addTextItem(input.value);
       input.value = '';
     });
 
-    // Add Color Swatch
     document.getElementById('addColorBtn').addEventListener('click', () => {
       const color = document.getElementById('colorPicker').value;
-      const item = createBoardItem(200, 200);
-      item.classList.add('color-item');
-      item.style.backgroundColor = color;
+      addColorItem(color);
     });
 
-    // Drag and Drop Logic
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      if (confirm('Clear the entire board?')) {
+        canvas.innerHTML = '';
+        localStorage.removeItem('moodboard_data');
+      }
+    });
+
+    
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      // Hide delete buttons during capture
+      document.querySelectorAll('.delete-btn').forEach(btn => btn.style.display = 'none');
+      document.querySelectorAll('.board-item').forEach(el => el.classList.remove('selected'));
+
+      html2canvas(canvas, { useCORS: true }).then(canvasImage => {
+        const link = document.createElement('a');
+        link.download = 'my-moodboard.png';
+        link.href = canvasImage.toDataURL();
+        link.click();
+
+        
+        document.querySelectorAll('.delete-btn').forEach(btn => btn.style.display = '');
+      });
+    });
+
+    
     function startDrag(e) {
       if (e.target.classList.contains('delete-btn')) return;
       
-      // Highlight selected
       document.querySelectorAll('.board-item').forEach(el => el.classList.remove('selected'));
       activeElement = this;
       activeElement.classList.add('selected');
-
-      // Bring to front
       canvas.appendChild(activeElement);
 
       offsetX = e.clientX - activeElement.offsetLeft;
@@ -257,18 +334,18 @@
     function drag(e) {
       if (!activeElement) return;
       e.preventDefault();
-      
-      const x = e.clientX - offsetX;
-      const y = e.clientY - offsetY;
-
-      activeElement.style.left = `${x}px`;
-      activeElement.style.top = `${y}px`;
+      activeElement.style.left = `${e.clientX - offsetX}px`;
+      activeElement.style.top = `${e.clientY - offsetY}px`;
     }
 
     function stopDrag() {
       document.removeEventListener('mousemove', drag);
       document.removeEventListener('mouseup', stopDrag);
+      saveLayout();
     }
+
+    // finallyyy
+    window.onload = loadLayout;
   </script>
 </body>
 </html>
