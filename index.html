@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-  
   <title>My Perfect Day</title>
   <style>
         
@@ -198,7 +197,7 @@
 
         <!-- CREATE SECTION -->
           <section id="create">
-       
+		  <div style="display: flex; height: calc(100vh - 150px);">
 
   <aside id="sidebar">
     <h1>Moodboard Studio</h1>
@@ -234,7 +233,9 @@
   </aside>
 
   <main id="canvas"></main>
+  </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script>
     const canvas = document.getElementById('canvas');
     let activeElement = null;
@@ -388,9 +389,10 @@
       document.removeEventListener('mouseup', stopDrag);
       saveLayout();
     }
-</section>
-    // finallyyy
-    window.onload = loadLayout;
   </script>
+  </section>
+  </div>
+    <!-- finallyyy -->
+    <script>window.onload = loadLayout;</script>
 </body>
 </html>
